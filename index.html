@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Socket.IO chat</title>
+  <!-- CSS only -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+  <!-- <script src="https://cdn.socket.io/4.4.0/socket.io.min.js"></script> 
+   -->
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500&display=swap');
+
+    body {
+      font-family: 'Manrope', sans-serif;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-12">
+        <h4>Localhost Pust Socket </h4>
+      </div>
+      <div class="col-12 col-md-6">
+
+        <div>
+          <small>Message sender to broadcase</small>
+          <input type="text" id="msg" class="form-control mb-3" placeholder="msg">
+
+          <small>Target Receiver  (Termintal or Supervisor)</small>
+          <input type="text" id="sender" class="form-control  mb-1" placeholder="terget reciver terminal" value="terminal">
+
+
+        </div>
+        <div class="text-end">
+          <button type="button" id="send" class="btn btn-sm btn-primary">SEND</button>
+        </div>
+        <script>
+          var socket = io.connect('http://localhost:3000', { transports: ['websocket'] });
+          socket.emit("data", "masuk dari RELOAD LOCALHOST");
+
+          socket.on("emiter", (arg) => {
+            console.log(arg);
+          });
+
+          $("#send").click(function () {
+            console.log("send adata");
+            const data = {
+              to: $('#sender').val(),
+              msg: $('#msg').val(),
+            }
+            socket.emit("data", data);
+          })
+
+        </script>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
