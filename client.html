@@ -29,6 +29,10 @@
 
         <div>
           <small>Message sender to broadcase</small>
+          <input type="text" id="action" class="form-control mb-3" placeholder="action">
+
+
+          <small>Message sender to broadcase</small>
           <input type="text" id="msg" class="form-control mb-3" placeholder="msg">
 
           <small>Target Receiver  (Termintal or Supervisor)</small>
@@ -52,6 +56,7 @@
             const data = {
               to: $('#sender').val(),
               msg: $('#msg').val(),
+              action : $('#action').val(),
             }
             socket.emit("data", data);
           })

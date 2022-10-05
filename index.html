@@ -22,17 +22,29 @@
 <body>
   <div class="container">
     <div class="row">
-      <div class="col-12">
+      <div class="col-12 mt-4">
         <h4>Localhost Pust Socket </h4>
       </div>
-      <div class="col-12 col-md-6">
+      <div class="col-12 col-md-9">
 
         <div>
-          <small>Message sender to broadcase</small>
+          <small>Acition</small>
+<div class="font-monospace small">
+<b>help</b> : untuk nyalakan alert di supervisor, <br>
+<b>reload </b>: untuk reload / re-request http ajax supervisor karena ada perubahan di Termintal
+</div>
+          <input type="text" id="action" class="form-control mb-3" placeholder="action">
+
+
+          <small>Broadcase Message</small>
           <input type="text" id="msg" class="form-control mb-3" placeholder="msg">
 
-          <small>Target Receiver  (Termintal or Supervisor)</small>
-          <input type="text" id="sender" class="form-control  mb-1" placeholder="terget reciver terminal" value="terminal">
+          <small>Send to(termintal or supervisor)</small>
+          <select id="sender" class="form-control  mb-1" >
+            <option value="supervisor" selected>supervisor</option>
+            <option value="terminal">terminal</option>
+            
+          </select>
 
 
         </div>
@@ -52,6 +64,7 @@
             const data = {
               to: $('#sender').val(),
               msg: $('#msg').val(),
+              action : $('#action').val(),
             }
             socket.emit("data", data);
           })
