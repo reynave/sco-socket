@@ -1,0 +1,9 @@
+SETTING ECR jaringan
+Function 77, passwordnya 999999
+
+Setting IP Address
+Function 2, password 3226
+> "setting IP", harus Static
+
+Refresh jaringan
+Funtion 0, BCA
