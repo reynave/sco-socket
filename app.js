@@ -4,8 +4,9 @@ const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
-const { SerialPort } = require('serialport')
-let dataTxtString = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
+const { SerialPort } = require('serialport'); 
+
+
 var refreshIntervalId = false;
 let user = 0;
 
@@ -29,89 +30,148 @@ io.on('connection', (socket) => {
 
         if (arg['action'] == 'ajax') {
             // Self only (ex ajax)
-            if (arg['msg'] == 'BcaECR') {
+            if (arg['msg'] == 'bcaEcrCom') {
                 clearInterval(refreshIntervalId);
-                console.log(arg); 
-                let hex = Buffer.from( arg['txt']); 
+                console.log(arg);
+                let hex = Buffer.from(arg['txt']);
                 let ascii = hexToAscii(hex);
-                console.log("debit masuk","ascii : ",ascii);
-                bcaEcr(ascii);
+
+                // DEBIT CASH 
+                let sendToEcr = {
+                    ascii: ascii,
+                    socket: socket,
+                    transType: arg['transType'],
+                }
+                if (arg['transType'] == '01') {
+                    bcaEcrCom(sendToEcr);
+                }
+                // BCA QRIS
+                if (arg['transType'] == '31') {
+                    bcaEcrCom(sendToEcr);
+                }
             }
 
-            if (arg['msg'] == 'comClose') { 
+            if (arg['msg'] == 'comClose') {
                 clearInterval(refreshIntervalId);
-                if(refreshIntervalId._idleTimeout > 1){
+                if (refreshIntervalId._idleTimeout > 1) {
                     port.close();
                 }
                 console.log(refreshIntervalId._idleTimeout);
-              
-            }
-            // setInterval(function () {
-                date = new Date();
-                const resp = {
-                    data :"ERC loop " + date,
-                    action : 'bca01',
+                const send = {
+                    data: "date",
                 }
-                socket.emit("emiter", resp );
+                socket.emit("emiter", send);
+                console.log("emiter");
+            }
+
+            if (arg['msg'] == 'ercClear') {
+                bcaErcClearCom();
+            }
+ 
+            // setInterval(function () {
+            date = new Date();
+            const resp = {
+                data: "ERC loop " + date,
+                action: 'bca01',
+            }
+            //   socket.emit("emiter", resp );
             //     io.emit("emiter",{msg2:"ERC loop "+date});
             // }, 1000);
 
         } else {
             // Broadcase
+            console.log("io.emit");
             io.emit("emiter", arg);
         }
-
-
+ 
     });
 
 });
- 
+
 server.listen(3000, () => {
     console.log('listening on *:3000', 0x06);
 });
 
-function bcaEcr(ascii) {
-    let i = 0;
+
+function bcaErcClearCom() {
+    let resp = null;
     port.open(function (res) {
         if (res) {
             console.log(res.name, ', opening port: ', res.message);
         } else {
             console.log('com3 Open');
         }
-   
-        port.write(ascii, function (err) {
+        for (var i = 0; i <= 2; i++) { 
+            resp = port.read()?.toString('hex') || '';
+            console.log(i, 'ercClear ', resp);
+        }
+    });
+}
+
+function bcaEcrCom(sendToEcr = []) {
+
+    let i = 0;
+    port.open(function (res) {
+        if (res) {
+            console.log(res.name, res.message); 
+        } else {
+            console.log('com3 Open');
+        }
+
+        port.write(sendToEcr['ascii'], function (err) {
             if (err) throw err;
         });
-   
+
         let read = "";
         refreshIntervalId = setInterval(function () {
             i++;
-            let resp = port.read()?.toString('hex') || ''; 
-            console.log(i, resp);
-            if(resp){ 
-                port.write( Buffer.from('06', 'utf8'), function (err) {
-                    if (err) throw err; 
+            let resp = port.read()?.toString('hex') || '';
+            console.log(i);
+            if (resp) {
+                port.write('\x06', function (err) {
+                    if (err) throw err;
                 });
-                console.log(" PORT WRITE back ", i);
+                let respString = hexToAscii(resp);
+                const sendBack = {
+                    i: i,
+                    hex: resp,
+                    ascii: respString,
+                    respCode: respString.slice(53, 55),
+                    transType: sendToEcr['transType'],
+                }
+                console.log(i, sendBack, "Port write done");
+                sendToEcr['socket'].emit("emiter", sendBack);
+
+
+                if (sendBack.RespCode == '00') {
+                    clearInterval(refreshIntervalId);
+                    port.close();
+                    console.log("Com Close!");
+                }
+
+                if (sendBack.RespCode == 'P3') {
+                    clearInterval(refreshIntervalId);
+                    port.close();
+                    console.log("User press Cancel on EDC, Com Close!");
+                }
             }
-            if(i > 500 ){
+            if (i > 500) {
                 clearInterval(refreshIntervalId);
                 port.close();
             }
-           
+
         }, 250);
 
     });
 }
+ 
+function hexToAscii(str1) {
+    var hex = str1.toString();
+    var str = '';
+    for (var n = 0; n < hex.length; n += 2) {
+        str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
+    }
+    return str;
+} 
 
 
-
-function hexToAscii(str1)
-{
-   var hex  = str1.toString();
-   var str = '';
-   for (var n = 0; n < hex.length; n += 2) {
-       str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
-   }
-   return str;
-}
