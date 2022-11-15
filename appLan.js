@@ -5,11 +5,11 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
 
-
+let com = false;
 const net = require('net');
 const env_port = 80;
 const env_host = '192.168.1.154';
-let dataTxtString = "P010000005500000000000000001688700627201892   251000000000000000  N00000                                                                              ";
+let dataTxtString = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
 // DOC https://github.com/nodejs/node/issues/2237
 
 let user = 0;
@@ -23,48 +23,70 @@ server.listen(3000, () => {
     console.log('listening on *:3000');
 });
 
-
-
-
 io.on('connection', (socket) => {
     user++;
     console.log('a user connected ' + user);
-    let date = new Date();
+
     socket.on("data", (arg) => {
-        console.log(arg);
+        //console.log(arg);
 
         if (arg['action'] == 'ajax') {
             // Self only (ex ajax)
             if (arg['msg'] == 'bcaEcrCom') {
-                console.log(arg);
+
                 let hex = Buffer.from(arg['txt']);
                 let ascii = hexToAscii(hex);
 
-                // DEBIT CASH 
+                // DEBIT CASH
                 let sendToEcr = {
                     ascii: ascii,
                     socket: socket,
                     transType: arg['transType'],
                 }
                 if (arg['transType'] == '01') {
-                    ecrCashLan(sendToEcr);
+                    comCashLan(sendToEcr);
                 }
                 // BCA QRIS
                 if (arg['transType'] == '31') {
-
+                    comCashLan(sendToEcr);
                 }
             }
 
             if (arg['msg'] == 'comClose') {
-                client.on('close', function () {
-                    console.log('Cleint 1 :Connection Closed');
-                });
+                comClose();
+            }
+
+            if (arg['msg'] == 'comClear') {
+                comClear();
+
+            }
+            if (arg['msg'] == 'comTest') {
+                let sendToEcr = { 
+                    socket: socket, 
+                }
+                comTest(sendToEcr);
+            }
+
+            if (arg['msg'] == 'comConn') {
+                if (com == false) {
+                    const comResp = client.connect({ host: arg['host'], port: arg['port'] }, function () {
+                        console.log(`Client  : ERC Connected to server on  ${env_host}:${env_port}`);
+                    });
+                    com = comResp.connecting;
+                    const sendBack = { 
+                        msg: ` ${com}  : ERC Connected to server on  ${env_host}:${env_port}`,
+                    }
+                    socket.emit("emiter", sendBack);
+                } else {
+                    console.log('already connect!');
+                    const sendBack = { 
+                        msg: 'already connect!',
+                    }
+                    socket.emit("emiter", sendBack);
+                }
 
             }
 
-            if (arg['msg'] == 'ercClear') {
-
-            }
 
         } else {
             // Broadcase
@@ -77,47 +99,91 @@ io.on('connection', (socket) => {
 });
 
 function hexToAscii(str1) {
-    var hex = str1.toString();
-    var str = '';
-    for (var n = 0; n < hex.length; n += 2) {
+    let hex = str1.toString();
+    let str = '';
+    for (let n = 0; n < hex.length; n += 2) {
         str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
     }
     return str;
 }
-function ecrClearLan() {
-    client.connect({ host: env_host, port: env_port }, function () {
-        for (var i = 0; i <= 2; i++) {
-            client.on('data', function (data) {
-                console.log('ecrClearLan : ', data.toString('hex'));
-            });
+
+function comClear() {
+    if (com == true) {
+        client.on('data', function (data) {
+            console.log('comClear : ', data.toString('hex'));
+        });
+    } else {
+        console.log("Com not connect");
+    }
+}
+
+function comTest(sendToEcr) {
+    if (com == true) {
+        client.write(dataTxtString);
+        const sendBack = { 
+            msg: 'Testing Success',
         }
-    });
+        sendToEcr['socket'].emit("emiter", sendBack);
+    } else {
+        console.log("Com not connect");
+        const sendBack = { 
+            msg: 'Com not connect',
+        }
+        sendToEcr['socket'].emit("emiter", sendBack);
+    }
+}
+
+function comClose() {
+    console.log('comClose Request');
+    
+    if (com == true) {
+        console.log("comClose", com);
+        client.on('destroyed', function () {
+            console.log('destroyed :Connection end');
+        });
+        client.on('end', function () {
+            console.log('client :Connection end');
+        });
+        
+          
+    } else {
+        console.log("Com Closed");
+    }
 
 }
 
-
-function ecrCashLan(sendToEcr = []) {
-    client.connect({ host: env_host, port: env_port }, function () {
-        //Log when the connection is established
-        console.log(`Client 1 :Connected to server on port  ${env_port}`);
-
-        //Try to send data to the server 
-        client.write(dataTxtString);
+function comCashLan(sendToEcr = []) {
+    if (com == true) {
+        client.write(sendToEcr['ascii']);
 
         //Handle data coming from the server
         client.on('data', function (data) {
-            console.log('Client 1 received from server : ', data.toString('hex'));
-            client.write('\x06');
+            console.log('Client comCashLan get on.data  '); 
+            let hex = data.toString('hex');
+            if(hex == '15'){
+                console.log("NAK (15H), NAK indicates that the receiver requests the retransmission of the  last message that was received in error");
+                client.write('\x15');
+            }else{
+                client.write('\x06');
+            } 
+            let respString = hexToAscii(hex);
+            const sendBack = {
+                hex: hex,
+                ascii: respString,
+                respCode: respString.slice(53, 55),
+                transType: sendToEcr['transType'],
+            }
+            sendToEcr['socket'].emit("emiter", sendBack); 
         });
-        // Handle connection close 
-        client.on('close', function () {
-            console.log('Cleint 1 :Connection Closed');
-        });
-        //Handle error
-        client.on('error', function (error) {
-            console.error(`Connection Error ${error}`);
-        });
-
-    });
-
+    } else {
+        console.log("Com not connect");
+        const sendBack = { 
+            respCode: 'ER01',
+            transType: sendToEcr['transType'],
+        }
+        sendToEcr['socket'].emit("emiter", sendBack);
+    }
 }
+
+
+ 
