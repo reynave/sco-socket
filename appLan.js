@@ -28,7 +28,6 @@ io.on('connection', (socket) => {
     console.log('a user connected ' + user);
 
     socket.on("data", (arg) => {
-        //console.log(arg);
 
         if (arg['action'] == 'ajax') {
             // Self only (ex ajax)
@@ -44,12 +43,23 @@ io.on('connection', (socket) => {
                     transType: arg['transType'],
                 }
                 if (arg['transType'] == '01') {
+                    console.log(" call comCashLan(sendToEcr) 01 ");
                     comCashLan(sendToEcr);
                 }
                 // BCA QRIS
                 if (arg['transType'] == '31') {
+                    console.log(" call comCashLan(sendToEcr) 03 ");
                     comCashLan(sendToEcr);
                 }
+            }
+
+            if (arg['msg'] == 'transType31') {
+                let sendToEcr = {
+                    socket: socket,
+                    data: arg
+                }
+                transType31(sendToEcr);
+
             }
 
             if (arg['msg'] == 'comClose') {
@@ -61,8 +71,8 @@ io.on('connection', (socket) => {
 
             }
             if (arg['msg'] == 'comTest') {
-                let sendToEcr = { 
-                    socket: socket, 
+                let sendToEcr = {
+                    socket: socket,
                 }
                 comTest(sendToEcr);
             }
@@ -73,13 +83,16 @@ io.on('connection', (socket) => {
                         console.log(`Client  : ERC Connected to server on  ${env_host}:${env_port}`);
                     });
                     com = comResp.connecting;
-                    const sendBack = { 
+                    const sendBack = {
                         msg: ` ${com}  : ERC Connected to server on  ${env_host}:${env_port}`,
                     }
                     socket.emit("emiter", sendBack);
+                    client.on('data', function (data) {
+                        console.log(data);
+                    });
                 } else {
                     console.log('already connect!');
-                    const sendBack = { 
+                    const sendBack = {
                         msg: 'already connect!',
                     }
                     socket.emit("emiter", sendBack);
@@ -108,6 +121,8 @@ function hexToAscii(str1) {
 }
 
 function comClear() {
+    console.log("com Clear");
+
     if (com == true) {
         client.on('data', function (data) {
             console.log('comClear : ', data.toString('hex'));
@@ -120,13 +135,13 @@ function comClear() {
 function comTest(sendToEcr) {
     if (com == true) {
         client.write(dataTxtString);
-        const sendBack = { 
+        const sendBack = {
             msg: 'Testing Success',
         }
         sendToEcr['socket'].emit("emiter", sendBack);
     } else {
         console.log("Com not connect");
-        const sendBack = { 
+        const sendBack = {
             msg: 'Com not connect',
         }
         sendToEcr['socket'].emit("emiter", sendBack);
@@ -135,7 +150,7 @@ function comTest(sendToEcr) {
 
 function comClose() {
     console.log('comClose Request');
-    
+
     if (com == true) {
         console.log("comClose", com);
         client.on('destroyed', function () {
@@ -144,8 +159,8 @@ function comClose() {
         client.on('end', function () {
             console.log('client :Connection end');
         });
-        
-          
+
+
     } else {
         console.log("Com Closed");
     }
@@ -153,31 +168,46 @@ function comClose() {
 }
 
 function comCashLan(sendToEcr = []) {
+    let i = 0;
+    let data = new Date();
+    let bufferLock = false;
     if (com == true) {
         client.write(sendToEcr['ascii']);
+        console.log("\n\n", "Start Write ", i, Math.random() * 100);
 
-        //Handle data coming from the server
-        client.on('data', function (data) {
-            console.log('Client comCashLan get on.data  '); 
-            let hex = data.toString('hex');
-            if(hex == '15'){
-                console.log("NAK (15H), NAK indicates that the receiver requests the retransmission of the  last message that was received in error");
-                client.write('\x15');
-            }else{
-                client.write('\x06');
-            } 
-            let respString = hexToAscii(hex);
-            const sendBack = {
-                hex: hex,
-                ascii: respString,
-                respCode: respString.slice(53, 55),
-                transType: sendToEcr['transType'],
-            }
-            sendToEcr['socket'].emit("emiter", sendBack); 
-        });
+        if (bufferLock == false) {
+            //Handle data coming from the server
+            client.on('data', function (data) {
+                i++;
+                console.log('Client comCashLan get on.data  ');
+                let hex = data.toString('hex');
+                if (hex == '15') {
+                    console.log("NAK (15H), NAK indicates that the receiver requests the retransmission of the  last message that was received in error");
+                    client.write('\x15');
+                }
+
+                if (hex == '06') {
+                    console.log('ACK (06H)');
+                    client.write('\x06');
+                }
+                bufferLock = true;
+                let respString = hexToAscii(hex);
+                const sendBack = {
+                    hex: hex,
+                    ascii: respString,
+                    respCode: respString.slice(53, 55),
+                    transType: sendToEcr['transType'],
+                }
+                sendToEcr['socket'].emit("emiter", sendBack);
+
+                console.log("i", i, Math.random() * 100, hex, bufferLock,);
+
+            });
+        }
+
     } else {
         console.log("Com not connect");
-        const sendBack = { 
+        const sendBack = {
             respCode: 'ER01',
             transType: sendToEcr['transType'],
         }
@@ -186,4 +216,45 @@ function comCashLan(sendToEcr = []) {
 }
 
 
- 
+function transType31(sendToEcr = []) {
+    if (com == true) {
+        const sendBack = {
+            msg: 'waiting',
+            data: sendToEcr['data'],
+        }
+        sendToEcr['socket'].emit("emiter", sendBack);
+
+        client.write(hexToAscii(sendToEcr['data']['hex']));
+        client.on('data', function (data) {
+            
+            console.log('Inquiry Qris, type 32');
+            let hex = data.toString('hex');
+            if (hex == '15') {
+                console.log("NAK (15H), NAK indicates that the receiver requests the retransmission of the  last message that was received in error");
+                client.write('\x15');
+            }
+
+            if (hex == '06') {
+                console.log('ACK (06H)');
+                client.write('\x06');
+            }
+            bufferLock = true;
+            let respString = hexToAscii(hex);
+            const sendBack = {
+                hex: hex,
+                ascii: respString,
+                respCode: respString.slice(53, 55),
+                transType: sendToEcr['transType'],
+            }
+            sendToEcr['socket'].emit("emiter", sendBack);  
+        });
+    }else {
+        console.log("Com not connect");
+        const sendBack = {
+            respCode: 'ER01',
+            transType: sendToEcr['transType'],
+        }
+        sendToEcr['socket'].emit("emiter", sendBack);
+    }
+}
+
