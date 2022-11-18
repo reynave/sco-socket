@@ -121,20 +121,76 @@ function hexToAscii(str1) {
 }
 
 function comClear() {
+    let date = new Date();
     console.log("com Clear");
-
-    if (com == true) {
-        client.on('data', function (data) {
-            console.log('comClear : ', data.toString('hex'));
+    client.connect({ host: env_host, port: env_port }, function () {
+        console.log(`Client  : ERC Connected to server on  ${env_host}:${env_port}`);
+        console.log("Read Data 1");
+        client.on('data', function (data) { 
+            console.log('on Data : ', date); 
         });
-    } else {
-        console.log("Com not connect");
-    }
+        console.log("Read Data 2");
+        client.on('data', function (data) { 
+            console.log('on Data : ', date); 
+        });
+        console.log("Read Data 3");
+        client.on('data', function (data) { 
+            console.log('on Data : ', date); 
+        });
+
+    });
+
+    // if (com == true) {
+    //     client.on('data', function (data) {
+    //         console.log('comClear : ', data.toString('hex'));
+    //     });
+    // } else {
+    //     console.log("Com not connect");
+    // }
 }
 
 function comTest(sendToEcr) {
+    com = true;
     if (com == true) {
-        client.write(dataTxtString);
+        let date = new Date();
+        console.log("send : \n\n");
+
+        client.connect({ host: env_host, port: env_port }, function () {
+            console.log(`Client  : ERC Connected to server on  ${env_host}:${env_port}`);
+            client.write(dataTxtString);
+            // client.on('data', function (data) {
+            //     client.write('\x06');
+            //     date = new Date();
+            //     console.log('on Data : ', date);
+            setTimeout(function () {
+                // client.end();
+                client.destroy();
+                console.log("COM END");
+            }, 250);
+
+            // });
+
+        });
+
+
+
+
+        // client.write(dataTxtString); 
+        // client.on('data', function (data) {
+        //     client.write('\x06');
+        //     date = new Date();
+        //     console.log('on Data : ',date);
+        //     setTimeout(function(){
+        //         client.end();
+        //         console.log("COM END");
+        //         com =false;
+        //     },1000);
+
+        // });
+        // client.on('end', function() { 
+        //     console.log('disconnected from server');
+        //  });
+
         const sendBack = {
             msg: 'Testing Success',
         }
@@ -150,16 +206,11 @@ function comTest(sendToEcr) {
 
 function comClose() {
     console.log('comClose Request');
-
+    client.destroy();
     if (com == true) {
-        console.log("comClose", com);
-        client.on('destroyed', function () {
-            console.log('destroyed :Connection end');
-        });
-        client.on('end', function () {
-            console.log('client :Connection end');
-        });
-
+        client.end();
+        console.log("COM END");
+        com = false;
 
     } else {
         console.log("Com Closed");
@@ -226,8 +277,7 @@ function transType31(sendToEcr = []) {
 
         client.write(hexToAscii(sendToEcr['data']['hex']));
         client.on('data', function (data) {
-            
-            console.log('Inquiry Qris, type 32');
+
             let hex = data.toString('hex');
             if (hex == '15') {
                 console.log("NAK (15H), NAK indicates that the receiver requests the retransmission of the  last message that was received in error");
@@ -246,9 +296,9 @@ function transType31(sendToEcr = []) {
                 respCode: respString.slice(53, 55),
                 transType: sendToEcr['transType'],
             }
-            sendToEcr['socket'].emit("emiter", sendBack);  
+            sendToEcr['socket'].emit("emiter", sendBack);
         });
-    }else {
+    } else {
         console.log("Com not connect");
         const sendBack = {
             respCode: 'ER01',
