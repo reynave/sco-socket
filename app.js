@@ -4,7 +4,7 @@ const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
-
+var ping = require('ping');
 let com = false;
 const net = require('net');
 const env_port = 80;
@@ -48,7 +48,7 @@ io.on('connection', (socket) => {
                 }
                 // BCA QRIS
                 if (arg['transType'] == '31') {
-                    console.log(" call comCashLan(sendToEcr) 03 ");
+                    console.log(" call comCashLan(sendToEcr) 31 ");
                     comCashLan(sendToEcr);
                 }
             }
@@ -78,25 +78,51 @@ io.on('connection', (socket) => {
             }
 
             if (arg['msg'] == 'comConn') {
-                if (com == false) {
-                    const comResp = client.connect({ host: arg['host'], port: arg['port'] }, function () {
-                        console.log(`Client  : ERC Connected to server on  ${env_host}:${env_port}`);
-                    });
-                    com = comResp.connecting;
-                    const sendBack = {
-                        msg: ` ${com}  : ERC Connected to server on  ${env_host}:${env_port}`,
+
+                let host = arg['host'];
+                ping.sys.probe(host, function (isAlive) {
+                    var msg = isAlive ? 'host ' + host + ' is alive' : 'host ' + host + ' is dead';
+                   
+                    if(isAlive == true){ 
+                        if (com == false) { 
+                            const comResp = client.connect({ host: arg['host'], port: arg['port'] }, function () {
+                                console.log(`Client  : ERC Connected to server on  ${env_host}:${env_port}`);
+                            });
+                            com = comResp.connecting;
+                            const sendBack = {
+                                msg: ` ${com}  : ERC Connected to server on  ${env_host}:${env_port}`,
+                            }
+        
+                            console.log('comResp',comResp);
+                            console.log('com',com);
+        
+        
+                            socket.emit("emiter", sendBack);
+                            client.on('data', function (data) {
+                                console.log(data);
+                            });
+                        } else {
+                            console.log('already connect!');
+                            const sendBack = {
+                                msg: 'already connect!',
+                            }
+                            socket.emit("emiter", sendBack);
+                        }
+                    }else{
+                        console.log(isAlive, msg);
+                        const sendBack = {
+                            msg: msg,
+                            action : 'warning',
+                            respCode : 'IPDEAD',
+
+                        }
+                        socket.emit("emiter", sendBack);
                     }
-                    socket.emit("emiter", sendBack);
-                    client.on('data', function (data) {
-                        console.log(data);
-                    });
-                } else {
-                    console.log('already connect!');
-                    const sendBack = {
-                        msg: 'already connect!',
-                    }
-                    socket.emit("emiter", sendBack);
-                }
+                }); 
+
+
+
+               
 
             }
 
@@ -123,22 +149,8 @@ function hexToAscii(str1) {
 function comClear() {
     let date = new Date();
     console.log("com Clear");
-    // client.connect({ host: env_host, port: env_port }, function () {
-    //     console.log(`Client  : ERC Connected to server on  ${env_host}:${env_port}`);
-    //     console.log("Read Data 1");
-    //     client.on('data', function (data) {
-    //         console.log('on Data : ', date);
-    //     }); 
-    // });
     comReadData();
 
-    // if (com == true) {
-    //     client.on('data', function (data) {
-    //         console.log('comClear : ', data.toString('hex'));
-    //     });
-    // } else {
-    //     console.log("Com not connect");
-    // }
 }
 
 async function init() {
@@ -215,7 +227,7 @@ function comTest(sendToEcr) {
 
         // });
 
-    }else {
+    } else {
         console.log("Com Closed");
     }
     const sendBack = {
@@ -227,7 +239,7 @@ function comTest(sendToEcr) {
 
 function comClose() {
     console.log('comClose Request');
-   
+
     if (com == true) {
         client.destroy();
         console.log("COM END");
@@ -242,40 +254,38 @@ function comClose() {
 function comCashLan(sendToEcr = []) {
     let i = 0;
     let data = new Date();
-    let bufferLock = false;
     if (com == true) {
         client.write(sendToEcr['ascii']);
         console.log("\n\n", "Start Write ", i, Math.random() * 100);
 
-        if (bufferLock == false) {
-            //Handle data coming from the server
-            client.on('data', function (data) {
-                i++;
-                console.log('Client comCashLan get on.data  ');
-                let hex = data.toString('hex');
-                if (hex == '15') {
-                    console.log("NAK (15H), NAK indicates that the receiver requests the retransmission of the  last message that was received in error");
-                    client.write('\x15');
-                }
+        //Handle data coming from the server
+        client.on('data', function (data) {
+            i++;
+            console.log('Client comCashLan get on.data  ');
+            let hex = data.toString('hex');
+            if (hex == '15') {
+                console.log("NAK (15H), NAK indicates that the receiver requests the retransmission of the  last message that was received in error");
+                client.write('\x15');
+            }
 
-                if (hex == '06') {
-                    console.log('ACK (06H)');
-                    client.write('\x06');
-                }
-                bufferLock = true;
-                let respString = hexToAscii(hex);
-                const sendBack = {
-                    hex: hex,
-                    ascii: respString,
-                    respCode: respString.slice(53, 55),
-                    transType: sendToEcr['transType'],
-                }
-                sendToEcr['socket'].emit("emiter", sendBack);
+            if (hex == '06') {
+                console.log('ACK (06H)');
+                client.write('\x06');
+            }
+            bufferLock = true;
+            let respString = hexToAscii(hex);
+            const sendBack = {
+                hex: hex,
+                ascii: respString,
+                respCode: respString.slice(53, 55),
+                transType: sendToEcr['transType'],
+            }
+            sendToEcr['socket'].emit("emiter", sendBack);
 
-                console.log("i", i, Math.random() * 100, hex, bufferLock,);
+            console.log("i", i, Math.random() * 100, hex, bufferLock,);
 
-            });
-        }
+        });
+
 
     } else {
         console.log("Com not connect");
