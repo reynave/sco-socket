@@ -93,8 +93,8 @@ io.on('connection', (socket) => {
                                 msg: ` ${com}  : ERC Connected to server on  ${env_host}:${env_port}`,
                             }
         
-                            console.log('comResp',comResp);
-                            console.log('com',com);
+                           // console.log('comResp',comResp);
+                           // console.log('com',com);
         
         
                             socket.emit("emiter", sendBack);
