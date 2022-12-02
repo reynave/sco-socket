@@ -91,12 +91,9 @@ io.on('connection', (socket) => {
                             com = comResp.connecting;
                             const sendBack = {
                                 msg: ` ${com}  : ERC Connected to server on  ${env_host}:${env_port}`,
-                            }
-        
-                           // console.log('comResp',comResp);
-                           // console.log('com',com);
-        
-        
+                                ecr : true,
+                                respCode : 'ECR01',
+                            } 
                             socket.emit("emiter", sendBack);
                             client.on('data', function (data) {
                                 console.log(data);
@@ -105,6 +102,8 @@ io.on('connection', (socket) => {
                             console.log('already connect!');
                             const sendBack = {
                                 msg: 'already connect!',
+                                ecr : true,
+                                respCode : 'ECR01',
                             }
                             socket.emit("emiter", sendBack);
                         }
@@ -114,6 +113,7 @@ io.on('connection', (socket) => {
                             msg: msg,
                             action : 'warning',
                             respCode : 'IPDEAD',
+                            ecr : false,
 
                         }
                         socket.emit("emiter", sendBack);
