@@ -8,7 +8,7 @@ var ping = require('ping');
 let com = false;
 const net = require('net');
 const env_port = 80;
-const env_host = '192.168.1.154';
+ 
 let dataTxtString = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
 // DOC https://github.com/nodejs/node/issues/2237
 
@@ -86,11 +86,11 @@ io.on('connection', (socket) => {
                     if(isAlive == true){ 
                         if (com == false) { 
                             const comResp = client.connect({ host: arg['host'], port: arg['port'] }, function () {
-                                console.log(`Client  : ERC Connected to server on  ${env_host}:${env_port}`);
+                                console.log(`Client  : ERC Connected to server on  ${host}:${env_port}`);
                             });
                             com = comResp.connecting;
                             const sendBack = {
-                                msg: ` ${com}  : ERC Connected to server on  ${env_host}:${env_port}`,
+                                msg: ` ${com}  : ERC Connected to server on  ${host}:${env_port}`,
                                 ecr : true,
                                 respCode : 'ECR01',
                             } 
@@ -172,8 +172,7 @@ async function comReadData() {
     let hex;
 
 
-
-    //client.connect({ host: env_host, port: env_port }, async function () {
+ 
     for (i = 0; i < 20; i++) {
 
 
@@ -191,8 +190,7 @@ async function comReadData() {
         console.log("Read Data  ", i);
         await sleep(250);
     }
-    client.destroy();
-    // });
+ 
 
 
 }
@@ -202,7 +200,7 @@ function comTest(sendToEcr) {
     let date = new Date();
     console.log("\n\nechoTest : \n");
     if (com == true) {
-        console.log(`Client  : ERC Connected to server on  ${env_host}:${env_port}`);
+        console.log(`Client  : ERC Connected to server on OK`);
         client.write(dataTxtString);
 
 
