@@ -9,7 +9,7 @@ let com = false;
 const net = require('net');
 const env_port = 80;
  
-let dataTxtString = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
+let echoTestBCA = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
 // DOC https://github.com/nodejs/node/issues/2237
 
 let user = 0;
@@ -201,7 +201,7 @@ function comTest(sendToEcr) {
     console.log("\n\nechoTest : \n");
     if (com == true) {
         console.log(`Client  : ERC Connected to server on OK`);
-        client.write(dataTxtString);
+        client.write(echoTestBCA);
 
 
         setTimeout(function () {
