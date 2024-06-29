@@ -9,7 +9,9 @@ var ping = require('ping');
 let com = false;
 const net = require('net');
 const env_port = 80;
-const env_host = '192.168.1.105'; 
+const env_host = '192.168.1.102'; 
+// SETING IP , Function 2, pass 3226
+
 let echoTestBCA = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
 // DOC https://github.com/nodejs/node/issues/2237
 const bin  = []; 
@@ -30,97 +32,172 @@ client = new net.Socket();
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index-bcaLan.html');
+   
 });
 
 server.listen(3000, () => {
-    console.log('listening on *:3000');
+    
+    console.log('BCA LAN DEV, listening on *:3000');
+    ecrBCA();
 });
 
-
-client.connect({ host: env_host, port: env_port }, function () {
-    console.log(`BCA 01 - server on  ${env_host}:${env_port}`);
-   
-    let version = "3";
-    let transType = '01';  
-    let transAmount = "000000272500";
-    let otherAmount =  "000000000000";
-    let debitCard = bcaDummyCC;
-    let ercOther   = "N00000                                                                              ";
-     
-    let LRC = null; 
-
-   
-    let MessageLength = version.length+
-    transType.length+
-    transAmount.length+
-    otherAmount.length+
-    debitCard.length+
-    ercOther.length;
-
-    console.log( 'MessageLength',pad(MessageLength,4))
-
-
-    let MessageData = pad(MessageLength,4)+
-        version+
-        transType+
-        transAmount+
-        otherAmount+
-        debitCard+
-        ercOther+ 
-        ETX; 
-
-   
-     binArray.push(binToArry(hex2bin( pad(MessageLength,4).slice(0, 2)) ) ); 
-     binArray.push(binToArry(hex2bin( pad(MessageLength,4).slice(-2)) ) );  
-
-     binArray.push(binToArry(hex2bin( version )) ); 
-
-    // TYPE TRANS 
-     binArray.push(binToArry(hex2bin(textToHex(transType).slice(0, 2)) ) );  
-     binArray.push(binToArry(hex2bin(textToHex(transType).slice(-2)) ));   
- 
- 
-    // msgToBinArr(" 0123456789");
-    msgToBinArr(transAmount);
-    msgToBinArr(otherAmount);
-    msgToBinArr(debitCard);
-    msgToBinArr(ercOther);  
-
-    binArray.push(binToArry(hex2bin("03") ));   
- 
-  //  console.log( binArray.length, xorOperation(binArray));
-
-     
-    LRC = binaryArrayToHex(xorOperation(binArray));
+function ecrBCA(){ 
+     client.connect({ host: env_host, port: env_port }, function () {
+        console.log(`BCA 01 - server on  ${env_host}:${env_port}`);
     
+        let version = "\x02";
+        let transType = '01';  
+        let transAmount = "000000272500";
+        let otherAmount =  "000000000000";
 
-    let postData = STX+"\x01"+"\x50"+
-        "\x03"+
-        transType+
-        transAmount+
-        otherAmount+
-        debitCard+
-        ercOther+ 
-        ETX+
-        LRC
+      //  let debitCard = bcaDummyCC;
+        let PAN = "4556330000000191   ";
+        let expireDate = "2503";
+
+        let cancelReason = "00";
+        let invoiceNumber = "000000";
+        let authCode = "      ";
+        let installmentFlag = " ";
+        let redeemFlag = " ";
+        let DCCFlag = "N";
+        let installmentPlan = "   ";
+        let InstallmentTenor = "  ";
+        let genericData = "            ";
+        let reffNumber = "            ";
+        let originalDate = "    ";
+        let BCAFiller = "                                                  ";
+       
+        let ercOther   = "N00000                                                                              ";
+        
+        let LRC = null; 
 
 
-    //let postData = STX+MessageData+LRC;  
-     console.log(LRC);
+        let MessageData = 
+                transAmount+otherAmount+PAN+expireDate+cancelReason+invoiceNumber+authCode+installmentFlag+
+                redeemFlag+DCCFlag+installmentPlan+InstallmentTenor+genericData+reffNumber+originalDate+BCAFiller;
 
-     fs.writeFileSync('./tmp/log.txt', postData);
-    client.write(postData);
+      
 
-    // setTimeout(function () { 
-    //     client.on('data', function (data) {
-    //         console.log("Read ", Math.random(), data);
-    //         client.write('\x06');
-    //         client.destroy();
-    //         console.log(`client.destroy() >> ${env_host}:${env_port} `);
-    //     });
-    // }, 2000); 
-}); 
+        const summaryLength = {
+            version         : [version,version.length],
+            transType       :[transType,transType.length],
+            transAmount     : [transAmount,transAmount.length],
+            otherAmount     : [otherAmount,otherAmount.length],
+            PAN             : [PAN,PAN.length],
+            expireDate      : [expireDate,expireDate.length],
+            cancelReason    : [cancelReason,cancelReason.length],
+            invoiceNumber   : [invoiceNumber,invoiceNumber.length],
+            authCode        : [authCode,authCode.length],
+            installmentFlag : [installmentFlag,installmentFlag.length],
+            redeemFlag      : [redeemFlag,redeemFlag.length],
+            DCCFlag         : [DCCFlag,DCCFlag.length],
+            installmentPlan : [installmentPlan,installmentPlan.length],
+            InstallmentTenor : [InstallmentTenor,InstallmentTenor.length],
+            genericData     : [genericData,genericData.length],
+            reffNumber      : [reffNumber,reffNumber.length],
+            originalDate    : [originalDate,originalDate.length],
+            BCAFiller       : [BCAFiller,BCAFiller.length], 
+        }
 
+        let totalLength = 0;
+        for (const [key, value] of Object.entries(summaryLength)) {
+            totalLength += value[1]; // Tambahkan panjang array (nilai kedua dalam array)
+        }
+        // const totalLength = Object.values(summaryLength).reduce((total, value) => total + value, 0);
+         //const totalLength = 150;
+
+        console.log(summaryLength, totalLength);
+
+
+        // let MessageData_old = pad(totalLength,4)+
+        //     version+
+        //     transType+
+        //     transAmount+otherAmount+debitCard+ercOther+ 
+        //     ETX; 
+
+    
+        binArray.push(binToArry(hex2bin( pad(totalLength,4).slice(0, 2)) ) ); 
+        binArray.push(binToArry(hex2bin( pad(totalLength,4).slice(-2)) ) );  
+
+        binArray.push(binToArry(hex2bin( version )) ); 
+
+        // TYPE TRANS 
+        binArray.push(binToArry(hex2bin(textToHex(transType).slice(0, 2)) ) );  
+        binArray.push(binToArry(hex2bin(textToHex(transType).slice(-2)) ));    
+     
+        msgToBinArr(MessageData); 
+
+        binArray.push(binToArry(hex2bin("03") ));   
+    
+        console.log( "binArray.length",binArray.length );
+
+        
+        LRC = binaryArrayToHex(xorOperation(binArray));
+        
+        let postData = STX+"\x01"+"\x50"+
+                    version+
+                    transType+
+                    MessageData+
+                    ETX+
+                    LRC
+
+        // let postData = STX+"\x01"+"\x50"+
+        //     version+
+        //     transType+
+        //     transAmount+
+        //     otherAmount+
+        //     debitCard+
+        //     ercOther+ 
+        //     ETX+
+        //     LRC
+
+
+        //let postData = STX+MessageData+LRC;  
+        console.log(LRC, postData);
+
+        let date = new Date();
+        let year = date.getFullYear();
+        let month = String(date.getMonth() + 1).padStart(2, '0'); // getMonth() returns 0-11, so add 1
+        let day = String(date.getDate()).padStart(2, '0');
+        
+        let formattedDate = `${year}-${month}-${day}`;
+
+        let filePath = './tmp/log_'+formattedDate+'.txt';
+        // Cek apakah file sudah ada
+        if (fs.existsSync(filePath)) {
+            // File ada, tambahkan data
+            fs.appendFile(filePath, postData+"\n", (err) => {
+            if (err) {
+                console.error('Gagal menambahkan data ke file:', err);
+            } else {
+                console.log('Data berhasil ditambahkan!');
+            }
+            });
+        } else {
+            // File belum ada, buat file baru dan tulis data
+            fs.writeFile(filePath, postData+"\n", (err) => {
+            if (err) {
+                console.error('Gagal menulis data ke file baru:', err);
+            } else {
+                console.log('File baru berhasil dibuat dan data berhasil ditambahkan!');
+            }
+            });
+        }
+
+ //client.write(echoTestBCA);
+
+        client.write(postData);
+
+        setTimeout(function () { 
+            client.on('data', function (data) {
+                console.log("Read ", Math.random(), data);
+                client.write('\x06');
+                client.destroy();
+                console.log(`client.destroy() >> ${env_host}:${env_port} `);
+            });
+        }, 2000); 
+    }); 
+}
  
 function msgToBinArr(msg){ 
     let array = msg.split("");
