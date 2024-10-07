@@ -9,7 +9,7 @@ var ping = require('ping');
 let com = false;
 const net = require('net');
 const env_port = 80;
-const env_host = '192.168.1.102'; 
+const env_host = '192.168.1.103'; 
 // SETING IP , Function 2, pass 3226
 
 let echoTestBCA = "P17000000000000000000000000                       00000000000000  N00000                                                                              ";
@@ -28,16 +28,16 @@ let bcaCard     = "                       00000000000000  ";
 client = new net.Socket(); 
 //console.log("BCA Land Ver 2.0");
 
- 
+let port = 9400;
 
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index-bcaLan.html');
    
 });
 
-server.listen(3000, () => {
+server.listen(port, () => {
     
-    console.log('BCA LAN DEV, listening on *:3000');
+    console.log('BCA LAN DEV, listening on *:'+port);
     ecrBCA();
 });
 

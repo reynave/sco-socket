@@ -15,7 +15,7 @@ io.on('connection', (socket) => {
     //socket.emit('message', 'Hello from server');
 
     socket.on("data", (arg) => {
-        console.log("io.emit");
+        //console.log("io.emit",arg); 
         io.emit("emiter", arg);
     });
 
